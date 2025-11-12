@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Brick City Bite Things to Do in Newark, NJ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.17.0-beta.1/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.17.0-beta.1/mapbox-gl.js"></script>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  #header {
+    background: #fff;
+    padding: 4px;
+    border-bottom: 1px solid #ccc;
+    z-index: 2;
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+  }
+  #categoryFilter {
+    padding: 3px;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+    max-width: 140px;
+  }
+  #sidebar {
+    flex: 1;
+    max-height: 100px;
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 4px;
+    padding: 3px;
+    font-size: 11px;
+    box-shadow: 0 0 2px rgba(0,0,0,0.2);
+  }
+  .place-item {
+    margin-bottom: 3px;
+    padding: 2px 0;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .place-item:hover { background: #f9f9f9; }
+  .color-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .mapboxgl-popup-content {
+    max-width: 180px;
+    padding: 4px;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+  #map {
+    flex: 1;
+    width: 100%;
+    position: relative;
+  }
+  @media (max-width: 600px) {
+    #header { flex-direction: column; gap: 4px; }
+    #categoryFilter, #sidebar { width: 100%; max-width: none; }
+    #sidebar { max-height: 80px; font-size: 10px; }
+    .mapboxgl-popup-content { max-width: 160px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+  <div id="header">
+    <select id="categoryFilter">
+      <option value="">Select Category</option>
+      <option value="Music, Arts, Culture">Music, Arts, Culture</option>
+      <option value="Nightlife">Nightlife</option>
+      <option value="Museums and Historical Sites">Museums and Historical Sites</option>
+      <option value="Parks">Parks</option>
+      <option value="clear">Clear Sidebar/Popups</option>
+    </select>
+    <div id="sidebar"></div>
+  </div>
+  <div id="map"></div>
+
+<script>
+mapboxgl.accessToken = 'pk.eyJ1IjoicmdhbmRvbGZmIiwiYSI6ImNtaDZhemZjMzBnbjQyanB0NHg2ZHJjZ3oifQ.3cv8mTmaVf2IHnG5TjCirQ';
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/rgandolff/cmhvihia7001o01s175mrglc7',
+  projection: 'globe',
+  zoom: 13,
+  center: [-74.17279968120015, 40.750131853316404]
+});
+map.addControl(new mapboxgl.NavigationControl());
+map.scrollZoom.enable();
+
+// Category colors
+const categoryColors = {
+  "Music, Arts, Culture": "hsl(287, 94%, 48%)",
+  "Nightlife": "hsl(242, 97%, 55%)",
+  "Museums and Historical Sites": "hsl(34, 97%, 52%)",
+  "Parks": "hsl(117, 100%, 41%)"
+};
+
+// Full places array from CSV
+const places = [
+  {name:"NJPAC (New Jersey Performing Arts Center)",address:"1 Center St, Newark, NJ 07102",lat:40.739944148052324,lng:-74.16769411568656,type:"Music, Arts, Culture",description:"World-class venue hosting concerts, dance, theater, and community events."},
+  {name:"Prudential Center",address:"25 Lafayette St, Newark, NJ 07102",lat:40.73301591255103,lng:-74.17086889229122,type:"Music, Arts, Culture",description:"Home to the NJ Devils and major concerts; a hub for sports and entertainment."},
+  {name:"Institute of Jazz Studies at Clements Place (Rutgers-Newark)",address:"15 Washington St, Newark, NJ 07102",lat:40.74419769581294,lng:-74.17059099438993,type:"Music, Arts, Culture",description:"Historic jazz archive with live performances and educational programs."},
+  {name:"Newark Symphony Hall",address:"1020 Broad St, Newark, NJ 07102",lat:40.72802359048459,lng:-74.1762204632281,type:"Music, Arts, Culture",description:"Historic performing arts center offering music, theater, and cultural events."},
+  {name:"All Points West Distillery",address:"73 Tichenor St, Newark, NJ 07105",lat:40.72377369591322,lng:-74.17475248778824,type:"Music, Arts, Culture",description:"Craft distillery in Newark's Ironbound, offering tours, tastings, and cocktails. They produce Bone Black Vodka and Cathouse gin."},
+  {name:"Paul Robeson Galleries, Rutgers University, Paul Robeson Campus Center",address:"350 Dr Martin Luther King Jr Blvd, Newark, NJ 07103",lat:40.74207431820759,lng:-74.17622216607732,type:"Music, Arts, Culture",description:"Contemporary art exhibitions and cultural programs that embody Robeson’s legacy of artistic freedom and community engagement."},
+  {name:"QXT’s Night Club",address:"248 Mulberry St, Newark, NJ 07102",lat:40.73040556405706,lng:-74.17155356399681,type:"Nightlife",description:"Underground club known for goth, industrial, and alternative dance nights."},
+  {name:"bunkr.",address:"25 Halsey St, Lower Level, Newark, NJ 07102",lat:40.74161667667707,lng:-74.17085691735487,type:"Nightlife",description:"Basement-style venue for electronic music, DJ open deck sessions, art shows, and immersive events."},
+  {name:"The Newark Standard",address:"68 Wilson Ave, Newark, NJ 07105",lat:40.72603236027318,lng:-74.15391214999596,type:"Nightlife",description:"Stylish bar and lounge with cocktails, DJs, and a vibrant social scene."},
+  {name:"Ballantine House at The Newark Museum of Art",address:"49 Washington St, Newark, NJ 07102",lat:40.7432495050194,lng:-74.1712859064288,type:"Museums and Historical Sites",description:"Restored 1885 mansion showcasing Victorian life, decorative arts, and the workers who built it all."},
+  {name:"Cathedral Basilica of the Sacred Heart",address:"89 Ridge St, Newark, NJ 07104",lat:40.75466330359537,lng:-74.1785966936576,type:"Museums and Historical Sites",description:"One of the largest Gothic cathedrals in the U.S., known for its architecture and stained glass adjoining Branch Brook Park."},
+  {name:"Mount Pleasant Cemetery",address:"375 Broadway, Newark, NJ 07104",lat:40.763548878589525,lng:-74.16636979065395,type:"Museums and Historical Sites",description:"Historic cemetery with exceptional architecture, notable graves, and beautiful 19th-century landscaping."},
+  {name:"The Newark Museum of Art",address:"49 Washington St, Newark, NJ 07102",lat:40.74297125398246,lng:-74.17145263078845,type:"Museums and Historical Sites",description:"Largest museum in NJ featuring global art, science exhibits, and a planetarium."},
+  {name:"Seated Lincoln at Essex County Courthouse",address:"Market St & Springfield Ave, Newark, NJ 07102",lat:40.73709836257269,lng:-74.17792590161108,type:"Museums and Historical Sites",description:"Bronze statue of Abraham Lincoln by Gutzon Borglum, sculptor of Mount Rushmore. Parking is nonexistent; walking is your best option."},
+  {name:"WBGO Public Radio Station",address:"54 Park Pl, Newark, NJ 07102",lat:40.738846742790656,lng:-74.16883029212786,type:"Music, Arts, Culture",description:"Premier jazz radio station broadcasting live music and cultural programming."},
+  {name:"Independence Park",address:"225 Walnut St, Newark, NJ 07105",lat:40.72445516915309,lng:-74.16059161168532,type:"Parks",description:"Community park in the Ironbound with sports fields and green space."},
+  {name:"Riverbank Park",address:"Market St & VanBuren Street, Newark, NJ 07105",lat:40.73152933442344,lng:-74.15272130129021,type:"Parks",description:"Scenic park along the Passaic River with trails and playgrounds."},
+  {name:"Newark Riverfront Park",address:"727 Raymond Blvd, Newark, NJ 07105",lat:40.73293235992941,lng:-74.15232674804729,type:"Parks",description:"Vibrant urban green space along the Passaic River with walking trails, sports fields, public art, and community events. Former industrial land transformed into accessible recreation areas."},
+  {name:"Military Park",address:"51 Park Pl, Newark, NJ 07102",lat:40.73898635767281,lng:-74.16953798495668,type:"Parks",description:"Downtown green space with prominent public art, periodic events, and lawns for grazing."},
+  {name:"Harriet Tubman Square",address:"Broad St & Washington Pl, Newark, NJ 07102",lat:40.74347113921173,lng:-74.16988619053369,type:"Parks",description:"Recently renamed to honor Harriet Tubman; features public art and civic gatherings across from the Newark Museum of Art."},
+  {name:"Branch Brook Park",address:"Branch Brook Park Dr, Newark, NJ 07104",lat:40.75966347700153,lng:-74.1814041846597,type:"Parks",description:"Famous for its cherry blossoms, lakes, and walking paths, this is the largest park in Newark. The following city subway stops are also located next to the park: Park Ave, Bloomfield Ave, Davenport Ave, Branch Brook Park."},
+  {name:"Branch Brook Park Roller Skating Center",address:"Clifton Avenue & 7th Ave, Newark, NJ 07104",lat:40.75206541957571,lng:-74.18134122551885,type:"Parks",description:"2,000‑square‑foot rink in Newark’s Branch Brook Park offering public skating, parties, live DJs, and community events."},
+  {name:"Althea Gibson Tennis Courts",address:"173-235 Heller Pkwy, Newark, NJ 07104",lat:40.77865447394285,lng:-74.17352745271214,type:"Parks",description:"20‑court public complex dedicated to the trailblazing champion, offering well‑maintained outdoor facilities with lighting for evening play."},
+  {name:"Woodland Cemetery",address:"670 S 10th St, Newark, NJ 07108",lat:40.72897832269777,lng:-74.20455057182535,type:"Museums and Historical Sites",description:"A 36.5‑acre historic burial ground founded in the South Ward, originally serving the city’s German immigrant community and later diverse populations. Ideal for urban exploration."}
+];
+
+let activePopups = [];
+
+function clearAll() {
+  document.getElementById('sidebar').innerHTML = '';
+  activePopups.forEach(p => p.remove());
+  activePopups = [];
+}
+
+function createPopupHTML(place) {
+  const color = categoryColors[place.type] || "#333";
+  return `
+    <div style="border-top:3px solid ${color}; padding-top:3px;">
+      <strong>${place.name}</strong><br>
+      ${place.address}<br>
+      <span style="color:${color}; font-weight:bold; font-size:10px;">${place.type}</span><br>
+      <div style="margin-top:3px; font-size:10px;">${place.description}</div>
+    </div>
+  `;
+}
+
+function updateSidebar(filteredPlaces) {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+  if (!filteredPlaces.length) {
+    sidebar.innerHTML = '<p>No matching places found.</p>';
+    return;
+  }
+  filteredPlaces.forEach(place => {
+    const color = categoryColors[place.type] || "#333";
+    const item = document.createElement('div');
+    item.className = 'place-item';
+    item.innerHTML = `<span class="color-dot" style="background:${color};"></span> ${place.name} — ${place.address}`;
+    item.onclick = () => {
+      map.easeTo({ center: [place.lng, place.lat], zoom: 14 });
+      const popup = new mapboxgl.Popup({ offset: 15 })
+        .setLngLat([place.lng, place.lat])
+        .setHTML(createPopupHTML(place))
+        .addTo(map);
+      activePopups.push(popup);
+    };
+    sidebar.appendChild(item);
+  });
+}
+
+// Add all markers initially (smaller custom markers)
+places.forEach(place => {
+  const color = categoryColors[place.type] || "#d23c3c";
+  const el = document.createElement('div');
+  el.style.background = color;
+  el.style.width = '15px';
+  el.style.height = '15px';
+  el.style.borderRadius = '50%';
+  el.style.border = '2px solid #fff';
+  el.style.boxShadow = '0 0 2px rgba(0,0,0,0.4)';
+  const popup = new mapboxgl.Popup({ offset: 20 })
+    .setHTML(createPopupHTML(place));
+  new mapboxgl.Marker(el)
+    .setLngLat([place.lng, place.lat])
+    .setPopup(popup)
+    .addTo(map);
+});
+
+// Filter dropdown logic
+document.getElementById('categoryFilter').addEventListener('change', (e) => {
+  const selected = e.target.value;
+  if (!selected) return;
+  if (selected === 'clear') {
+    clearAll();
+    e.target.selectedIndex = 0;
+    return;
+  }
+  clearAll();
+  const filtered = places.filter(p => p.type === selected);
+  updateSidebar(filtered);
+  if (filtered.length) {
+    const bounds = new mapboxgl.LngLatBounds();
+    filtered.forEach(p => bounds.extend([p.lng, p.lat]));
+    map.fitBounds(bounds, { padding: 30, duration: 500 });
+  }
+  e.target.selectedIndex = 0;
+});
+</script>
+</body>
+</html>
